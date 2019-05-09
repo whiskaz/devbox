@@ -5,4 +5,5 @@
     name:
       - "yum-utils"
       - "curl"
+      - "jq"
   ignore_errors: yes

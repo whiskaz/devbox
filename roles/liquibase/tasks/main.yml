@@ -1,0 +1,36 @@
+---
+- name: clean up docker files
+  shell: "rm -rf {{ role_path }}/repo"
+
+- name: make directory for docker files
+  shell: "mkdir -p {{ role_path }}/repo"
+
+- name: retrieve from github
+  git:
+    repo: https://github.com/whiskaz/docker-liquibase.git
+    dest: "{{ role_path }}/repo"
+
+- name: docker build
+  docker_image:
+    name: liquibase
+    tag: 3.5.5
+
+    ath: "{{ role_path }}/repo"
+    uildargs:
+      VERSION: 3.5.5
+
+- name: create container
+  docker_container:
+    name: liquibase
+    image: liquibase:3.5.5
+    volumes:
+      - /mnt/opt/misc/liquibase/changelog:/liquibase/changelog
+    restart_policy: always
+    interactive: yes
+    tty: yes
+    networks:
+      - name: "devbox"
+
+- name: clean up docker build files
+  shell: "rm -rf {{ role_path }}/repo"
+

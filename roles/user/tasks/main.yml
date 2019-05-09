@@ -1,0 +1,14 @@
+---
+- name: Create common groups
+  group: "name={{ item }} state=present"
+  with_items:
+    - docker
+    - "{{ user }}"
+
+- name: "Create user '{{ user }}'"
+  user:
+    name: "{{ user }}"
+    group: "{{ user }}"
+    groups: "{{ user }},wheel,docker"
+    append: yes
+  register: user_info

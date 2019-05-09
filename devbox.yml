@@ -1,5 +1,9 @@
 ---
 - hosts: localhost
+  vars_files:
+    - ['settings.yml', 'defaults/settings.yml.default']
   roles:
+    - { role: user, tags: ['core', 'devbox', 'user'] }
     - { role: common, tags: ['core', 'devbox'] }
-    - { role: docker, tags['xyz'] }
+    - { role: docker, tags: ['core', 'devbox'] }
+    - { role: liquibase, tags: ['core', 'devbox','liquibase'] }

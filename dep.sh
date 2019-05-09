@@ -2,7 +2,7 @@
 
 ## Constants
 readonly PIP="9.0.3"
-readonly ANSIBLE="2.5.14"
+readonly ANSIBLE="2.7"
 
 yum install -y epel-release git 
 yum install -y python2-pip

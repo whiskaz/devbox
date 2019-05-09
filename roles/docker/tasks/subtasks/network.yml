@@ -1,0 +1,48 @@
+---
+- name: Network | Get list of docker networks
+  shell: docker network ls --format '{{ '{{' }} .Name{{ '}}' }}'
+  register: docker_networks
+
+- name: Network | Get devbox docker network gateway
+  shell: docker network inspect devbox -f '{{ '{{' }}range .IPAM.Config{{ '}}' }}{{ '{{' }}.Gateway{{ '}}' }}{{ '{{' }}end{{ '}}' }}'
+  register: docker_gateway
+  when: ('devbox' in docker_networks.stdout_lines)
+
+- name: "Network | Create new devbox docker network block"
+  block:
+
+  - name: Create devbox network
+    docker_network:
+      name: devbox
+      state: present
+
+  when: ('devbox' not in docker_networks.stdout_lines)
+
+- name: "Network | Rebuild existing devbox docker network block"
+  block:
+
+  - name: Network | Get list of containers on devbox network
+    shell: docker ps -a --filter network=devbox --format '{{ '{{' }}.Names{{ '}}' }}'
+    register: docker_containers
+
+  - name: Network | Disconnect containers from bridge network
+    shell: docker network disconnect -f bridge {{ item }}
+    with_items: "{{ docker_containers.stdout_lines }}"
+    register: r
+    failed_when: r.rc > 1
+    ignore_errors: yes
+
+  - name: Network | Rebuild devbox network
+    docker_network:
+      name: devbox
+      state: present
+      force: yes
+
+  - name: Network | Connect containers to devbox network
+    shell: docker network connect devbox {{ item }} --alias {{ item }}
+    with_items: "{{ docker_containers.stdout_lines }}"
+    register: q
+    failed_when: q.rc > 1
+    ignore_errors: yes
+
+  when: ('devbox' in docker_networks.stdout_lines) and (docker_gateway.stdout == '172.18.0.254')
