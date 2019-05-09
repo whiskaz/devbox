@@ -1,0 +1,5 @@
+---
+- hosts: localhost
+  roles:
+    - { role: common, tags: ['core', 'devbox'] }
+    - { role: docker, tags['xyz'] }

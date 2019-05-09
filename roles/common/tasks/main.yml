@@ -1,0 +1,8 @@
+---
+- name: Install common packages
+  yum:
+    state: present
+    name:
+      - "yum-utils"
+      - "curl"
+  ignore_errors: yes
