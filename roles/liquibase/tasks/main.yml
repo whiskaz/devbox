@@ -14,9 +14,8 @@
   docker_image:
     name: liquibase
     tag: 3.5.5
-
-    ath: "{{ role_path }}/repo"
-    uildargs:
+    path: "{{ role_path }}/repo"
+    buildargs:
       VERSION: 3.5.5
 
 - name: create container
@@ -30,7 +29,6 @@
     tty: yes
     networks:
       - name: "devbox"
-
-- name: clean up docker build files
-  shell: "rm -rf {{ role_path }}/repo"
+#- name: clean up docker files
+#  shell: "rm -rf {{ role_path }}/repo"
 

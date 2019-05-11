@@ -92,7 +92,7 @@
     owner: 54321
     group: 54321
   ignore_errors: yes
-  
+
 - name: "replace password in setup script"
   replace:
     path: /opt/oracle/scripts/setup/01setup.sql
