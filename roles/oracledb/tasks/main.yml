@@ -75,6 +75,7 @@
     dest: /opt/oracle/scripts/setup/
     owner: 54321
     group: 54321
+  ignore_errors: yes
 
 - name: "copy startup scripts to oracle directories"
   copy:
@@ -82,6 +83,7 @@
     dest: /opt/oracle/scripts/startup/
     owner: 54321
     group: 54321
+  ignore_errors: yes
 
 - name: "copy misc scripts to oracle directories"
   copy:
@@ -89,7 +91,8 @@
     dest: /opt/oracle/scripts/misc/
     owner: 54321
     group: 54321
-
+  ignore_errors: yes
+  
 - name: "replace password in setup script"
   replace:
     path: /opt/oracle/scripts/setup/01setup.sql
