@@ -1,0 +1,16 @@
+---
+- name: "check if docker container is running"
+  command: docker ps -q -f 'name=liquibase'
+  register: container_running
+  check_mode: no
+
+- name: "check if container is running | set container_running"
+  set_fact: container_running="{{ container_running.stdout != "" }}"
+
+- debug: msg="{{ container_running }}"
+
+- name: "apply changelog"
+  command: docker exec -i liquibase liquibase --version
+  register: output
+
+- debug: msg="{{ output }}"

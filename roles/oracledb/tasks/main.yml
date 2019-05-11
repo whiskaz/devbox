@@ -1,0 +1,160 @@
+---
+- name: "var"
+  set_fact:
+    dbreset: false
+    image_url: file:///mnt/opt/misc/images/oracle_database_12201.tar
+    #image_url: file:///mnt/opt/misc/images/oracle_database_test.tar
+    image_tag: 12.2.0.1-se2
+    password: Today#1234
+  tags:
+    - always
+
+- name: "check if docker image exists locally"
+  command: "docker images -q oracle/database:{{ image_tag }}"
+  register: image_exists
+  tags:
+    - download
+
+- name: "check if image exists locally | set image_exists"
+  set_fact: image_exists="{{ image_exists.stdout != "" }}"
+  tags:
+    - download
+
+- debug: msg="docker image found locally...{{ image_exists }}"
+
+- name: "download docker image locally"
+  get_url:
+    url: "{{ image_url }}"
+    dest: /tmp/oracle_database.tar
+  when: not image_exists
+  tags:
+    - download
+
+- name: "load docker image"
+  docker_image:
+    name: doesnotmatter
+    load_path: /tmp/oracle_database.tar
+  when: not image_exists
+  tags:
+    - download
+
+- name: "clean up downloaded image"
+  file:
+    state: absent
+    path: /tmp/oracle_database.tar
+  when: not image_exists
+  tags:
+    - download
+
+- name: "check if docker image exists locally"
+  command: "docker images -q oracle/database:{{ image_tag }}"
+  register: image_exists
+  when: not image_exists
+  tags:
+    - download
+
+- name: "check if image exists locally | set image_exists"
+  set_fact: image_exists="{{ image_exists.stdout != "" }}"
+  when: not image_exists
+  tags:
+    - download
+
+- name: "create oracle directories"
+  file: "path={{ item }} state=directory mode=0775 owner=54321 group=54321"
+  with_items:
+    - "/opt/oracle"
+    - "/opt/oracle/oradata"
+    - "/opt/oracle/scripts"
+    - "/opt/oracle/scripts/misc"
+    - "/opt/oracle/scripts/setup"
+    - "/opt/oracle/scripts/startup"
+
+- name: "copy setup scripts to oracle directories"
+  copy:
+    src: setup/
+    dest: /opt/oracle/scripts/setup/
+    owner: 54321
+    group: 54321
+
+- name: "copy startup scripts to oracle directories"
+  copy:
+    src: startup/
+    dest: /opt/oracle/scripts/startup/
+    owner: 54321
+    group: 54321
+
+- name: "copy misc scripts to oracle directories"
+  copy:
+    src: misc/
+    dest: /opt/oracle/scripts/misc/
+    owner: 54321
+    group: 54321
+
+- name: "replace password in setup script"
+  replace:
+    path: /opt/oracle/scripts/setup/01setup.sql
+    regexp: '#password#'
+    replace: "{{ password }}"
+
+- name: "stop and remove any existing container"
+  docker_container:
+    name: oracledb
+    state: absent
+
+- name: "create and start container"
+  docker_container:
+    name: oracledb
+    image: oracle/database:{{ image_tag }}
+    published_ports:
+      - "1521:1521"
+      - "5500:5500"
+    env:
+      ORACLE_SID: DEVBOXCDB
+      ORACLE_PDB: DEVBOXPDB1
+      ORACLE_PWD: "{{ password }}"
+    volumes:
+      - "/opt/oracle/oradata:/opt/oracle/oradata"
+      - "/opt/oracle/scripts:/opt/oracle/scripts"
+    networks:
+      - name: devbox
+        aliases:
+          - oracledb
+    purge_networks: yes
+    restart_policy: unless-stopped
+    state: started
+  when: image_exists
+
+- name: "check if docker container is running"
+  command: docker ps -q -f 'name=oracledb'
+  register: container_running
+  check_mode: no
+  when: dbreset
+  tags:
+    - dbreset
+
+- name: "check if container is running | set container_running"
+  set_fact: container_running="{{ container_running.stdout != "" }}"
+  when: dbreset
+  tags:
+    - dbreset
+
+- debug: msg="{{ container_running }}"
+  when: dbreset
+  tags:
+    - dbreset
+
+- name: "reset database"
+  shell: "echo '@/opt/oracle/scripts/misc/01reset.sql' | docker exec -i oracledb sqlplus SYS/{{ password }}@DEVBOXPDB1 AS SYSDBA"
+  check_mode: no
+  when: container_running
+  when: dbreset
+  tags:
+    - dbreset
+
+- name: "setup database"
+  shell: "echo '@/opt/oracle/scripts/setup/01setup.sql' | docker exec -i oracledb sqlplus SYS/{{ password }}@DEVBOXPDB1  AS SYSDBA"
+  check_mode: no
+  when: container_running
+  when: dbreset
+  tags:
+    - dbreset

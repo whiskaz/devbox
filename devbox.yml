@@ -7,3 +7,5 @@
     - { role: common, tags: ['core', 'devbox'] }
     - { role: docker, tags: ['core', 'devbox'] }
     - { role: liquibase, tags: ['core', 'devbox','liquibase'] }
+    - { role: oracledb, tags: ['core', 'devbox','oracledb'] }
+    - { role: dbdeploy, tags: ['dbdeploy'] }
