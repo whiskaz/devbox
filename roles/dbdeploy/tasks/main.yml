@@ -1,16 +1,35 @@
 ---
-- name: "check if docker container is running"
-  command: docker ps -q -f 'name=liquibase'
+- name: "check if docker containers for oracle and liquibase are running"
+  shell: docker ps -a | awk '{print $NF}' | grep -w 'liquibase\|oracledb'
   register: container_running
-  check_mode: no
+
+- fail:
+    msg: "please ensure oracledb and liquibase containers are running..."
+  when: container_running.stdout_lines | length < 2
 
 - name: "check if container is running | set container_running"
-  set_fact: container_running="{{ container_running.stdout != "" }}"
+  set_fact: container_running="{{ container_running.stdout_lines | length == 2 }}"
 
-- debug: msg="{{ container_running }}"
+- name: "check db status"
+  shell: "docker exec -i oracledb /opt/oracle/checkDBStatus.sh"
+  register: db_status
+  retries: 60
+  delay: 10
+  until: db_status.rc == 0
+  ignore_errors: yes
+
+- name: "set db_online boolean"
+  set_fact:
+    db_online: "{{ true if (db_status.rc == 0) else false }}"
+
+- debug: msg="{{ db_online }}"
+
+- fail:
+    msg: "oracle database is offline... please ensure oracle database is online..."
+  when: not db_online
 
 - name: "apply changelog"
-  command: docker exec -i liquibase liquibase --version
+  shell: "docker exec liquibase liquibase --driver=oracle.jdbc.OracleDriver --classpath=/liquibase/changelog --changeLogFile=/liquibase/changelog/master.changelog.xml --url='jdbc:oracle:thin:@oracledb:1521/{{ oracledb_pid }}' --username=DEVBOX --password={{ oracledb_password }} --contexts=schema,testdata update"
   register: output
-
+  when: db_online
 - debug: msg="{{ output }}"

@@ -1,9 +1,15 @@
 ---
-- name: clean up docker files
-  shell: "rm -rf {{ role_path }}/repo"
+- name: clean up docker build files
+  file:
+    path: "{{ role_path }}/repo"
+    state: absent
 
-- name: make directory for docker files
-  shell: "mkdir -p {{ role_path }}/repo"
+- name: "create liquibase changelog directory"
+  file: "path={{ item }} state=directory mode=0775 owner=1000 group=1000"
+  with_items:
+    - "/opt/devbox/liquibase"
+    - "/opt/devbox/liquibase/changelog"
+    - "{{ role_path }}/repo"
 
 - name: retrieve from github
   git:
@@ -18,17 +24,19 @@
     buildargs:
       VERSION: 3.5.5
 
+- name: "stop and remove any existing container"
+  docker_container:
+    name: liquibase
+    state: absent
+
 - name: create container
   docker_container:
     name: liquibase
     image: liquibase:3.5.5
     volumes:
-      - /mnt/opt/misc/liquibase/changelog:/liquibase/changelog
+      - /opt/devbox/liquibase/changelog:/liquibase/changelog
     restart_policy: always
     interactive: yes
     tty: yes
     networks:
       - name: "devbox"
-#- name: clean up docker files
-#  shell: "rm -rf {{ role_path }}/repo"
-

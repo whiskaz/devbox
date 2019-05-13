@@ -8,7 +8,8 @@
 - name: "Create user '{{ user }}'"
   user:
     name: "{{ user }}"
-    group: "{{ user }}"
     groups: "{{ user }},wheel,docker"
     append: yes
   register: user_info
+
+- debug: msg="Please restart sessions for group additions to take effect using 'logoout'"

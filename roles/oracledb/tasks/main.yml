@@ -2,15 +2,15 @@
 - name: "var"
   set_fact:
     dbreset: false
-    image_url: file:///mnt/opt/misc/images/oracle_database_12201.tar
-    #image_url: file:///mnt/opt/misc/images/oracle_database_test.tar
-    image_tag: 12.2.0.1-se2
-    password: Today#1234
   tags:
     - always
 
+- debug:
+    msg: "{{ oracledb_sid }} : {{ oracledb_pid }}"
+  tags: ['testing']
+
 - name: "check if docker image exists locally"
-  command: "docker images -q oracle/database:{{ image_tag }}"
+  command: "docker images -q oracle/database:{{ oracledb_image_tag }}"
   register: image_exists
   tags:
     - download
@@ -24,7 +24,7 @@
 
 - name: "download docker image locally"
   get_url:
-    url: "{{ image_url }}"
+    url: "{{ oracledb_image_url }}"
     dest: /tmp/oracle_database.tar
   when: not image_exists
   tags:
@@ -47,7 +47,7 @@
     - download
 
 - name: "check if docker image exists locally"
-  command: "docker images -q oracle/database:{{ image_tag }}"
+  command: "docker images -q oracle/database:{{ oracledb_image_tag }}"
   register: image_exists
   when: not image_exists
   tags:
@@ -97,7 +97,13 @@
   replace:
     path: /opt/oracle/scripts/setup/01setup.sql
     regexp: '#password#'
-    replace: "{{ password }}"
+    replace: "{{ oracledb_password }}"
+
+- name: "replace oracledb_pid in setup script"
+  replace:
+    path: /opt/oracle/scripts/setup/01setup.sql
+    regexp: ':oracledb_pid'
+    replace: "{{ oracledb_pid }}"
 
 - name: "stop and remove any existing container"
   docker_container:
@@ -107,14 +113,14 @@
 - name: "create and start container"
   docker_container:
     name: oracledb
-    image: oracle/database:{{ image_tag }}
+    image: oracle/database:{{ oracledb_image_tag }}
     published_ports:
       - "1521:1521"
       - "5500:5500"
     env:
-      ORACLE_SID: DEVBOXCDB
-      ORACLE_PDB: DEVBOXPDB1
-      ORACLE_PWD: "{{ password }}"
+      ORACLE_SID: "{{ oracledb_sid }}"
+      ORACLE_PDB: "{{ oracledb_pid }}"
+      ORACLE_PWD: "{{ oracledb_password }}"
     volumes:
       - "/opt/oracle/oradata:/opt/oracle/oradata"
       - "/opt/oracle/scripts:/opt/oracle/scripts"
@@ -147,7 +153,7 @@
     - dbreset
 
 - name: "reset database"
-  shell: "echo '@/opt/oracle/scripts/misc/01reset.sql' | docker exec -i oracledb sqlplus SYS/{{ password }}@DEVBOXPDB1 AS SYSDBA"
+  shell: "echo '@/opt/oracle/scripts/misc/01reset.sql' | docker exec -i oracledb sqlplus SYS/{{ oracledb_password }}@{{ oracledb_pid }} AS SYSDBA"
   check_mode: no
   when: container_running
   when: dbreset
@@ -155,9 +161,28 @@
     - dbreset
 
 - name: "setup database"
-  shell: "echo '@/opt/oracle/scripts/setup/01setup.sql' | docker exec -i oracledb sqlplus SYS/{{ password }}@DEVBOXPDB1  AS SYSDBA"
+  shell: "echo '@/opt/oracle/scripts/setup/01setup.sql' | docker exec -i oracledb sqlplus SYS/{{ oracledb_password }}@{{ oracledb_pid }}  AS SYSDBA"
   check_mode: no
   when: container_running
   when: dbreset
   tags:
     - dbreset
+
+- name: "check db status"
+  shell: "docker exec -i oracledb /opt/oracle/checkDBStatus.sh"
+  register: db_status
+  retries: 60
+  delay: 10
+  until: db_status.rc == 0
+  tags:
+    - checkdb
+
+- name: "set db_online boolean"
+  set_fact:
+    db_online: "{{ true if (db_status.rc == 0) else false }}"
+  tags:
+    - checkdb
+
+- debug: msg="{{ db_online }}"
+  tags:
+    - checkdb

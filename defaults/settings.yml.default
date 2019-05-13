@@ -1,2 +1,8 @@
 ---
 user: titan
+oracledb_sid: DEVBOXCDB
+oracledb_pid: DEVBOXPDB1
+oracledb_uid: DEVBOX
+oracledb_password: Today#1234
+oracledb_image_url: file:///mnt/opt/misc/images/oracle_database_12201.tar
+oracledb_image_tag: 12.2.0.1-se2

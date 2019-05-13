@@ -2,10 +2,13 @@
 - hosts: localhost
   vars_files:
     - ['settings.yml', 'defaults/settings.yml.default']
+  tasks:
+    - debug: msg={{ oracledb_password }}
+      tags: ['testing']
   roles:
-    - { role: user, tags: ['core', 'devbox', 'user'] }
-    - { role: common, tags: ['core', 'devbox'] }
+    - { role: user, tags: ['preinstall', 'user'] }
+    - { role: common, tags: ['core', 'devbox', 'preinstall', 'common'] }
     - { role: docker, tags: ['core', 'devbox'] }
-    - { role: liquibase, tags: ['devbox','liquibase'] }
     - { role: oracledb, tags: ['devbox','oracledb'] }
+    - { role: liquibase, tags: ['devbox','liquibase'] }
     - { role: dbdeploy, tags: ['dbdeploy'] }
